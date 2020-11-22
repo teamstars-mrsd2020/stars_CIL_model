@@ -18,7 +18,7 @@ from map_camera import MapCamera
 
 
 PIXELS_PER_WORLD = 5.5
-DEBUG_MAP_VIEW = False
+DEBUG_MAP_VIEW = True
 
 
 class StarsAgent:
@@ -241,7 +241,7 @@ class StarsAgent:
             velocity = self.player.get_velocity()
             speed = np.linalg.norm([velocity.x, velocity.y, velocity.z])
 
-            DT = 2.5  # speed-time window for rerouting
+            DT = 3.5  # speed-time window for rerouting
 
             if self.player.get_location().distance(
                 self.cur_target.transform.location
@@ -255,6 +255,16 @@ class StarsAgent:
             target = self.transform_target_waypoint(self.cur_target)
 
             if DEBUG_MAP_VIEW:
+
+                self.world.debug.draw_point(
+                    self.cur_target.transform.location, life_time=2
+                )
+                self.world.debug.draw_point(
+                    self.player.get_location(),
+                    color=carla.Color(0, 0, 255),
+                    life_time=1,
+                )
+
                 out_points, heatmap = self.model(
                     topdown.cuda()[None], target.unsqueeze(0), debug=True
                 )

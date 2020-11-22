@@ -160,10 +160,11 @@ class PedestrianPool(object):
 
 
 class CarlaEnv(object):
-    def __init__(self, town="Town03", port=2000, **kwargs):
+    def __init__(self, town="Town03", port=2000, sync=True, num_players=1, **kwargs):
         self._client = carla.Client("localhost", port)
         self._client.set_timeout(30.0)
-
+        self.sync = sync
+        self.num_players = num_players
         set_sync_mode(self._client, False)
 
         # self._town_name = town
@@ -189,7 +190,9 @@ class CarlaEnv(object):
         self.weather = weather
         self._world.set_weather(weather)
 
-    def reset(self, weather="random", n_vehicles=0, n_pedestrians=0, seed=0):
+    def reset(
+        self, weather="random", n_vehicles=0, n_pedestrians=0, seed=0, set_weather=False
+    ):
         is_ready = False
 
         while not is_ready:
@@ -198,12 +201,11 @@ class CarlaEnv(object):
             self._clean_up()
             ### make this a multi agent thing(take num_agents as args)
             ### Initialize the ActorClass object inside this and add to a list called self._players
-            num_agents = NUM_AGENTS
-            self._spawn_players(self._map.get_spawn_points(), num_agents)
-            # self._spawn_player(np.random.choice(self._map.get_spawn_points()))
-            # self._setup_sensors()
+            self._spawn_players(self._map.get_spawn_points(), self.num_players)
 
-            self._set_weather(weather)
+            if set_weather:
+                self._set_weather(weather)
+
             self._pedestrian_pool = PedestrianPool(self._client, n_pedestrians)
             self._vehicle_pool = VehiclePool(self._client, n_vehicles)
 
@@ -238,8 +240,8 @@ class CarlaEnv(object):
     def step(self, control=None):
         # if control is not None:
         #     self._player.apply_control(control)
-
-        # self._world.tick()
+        if self.sync:
+            self._world.tick()
         self._tick += 1
         self._pedestrian_pool.tick()
         for player in self._players:
