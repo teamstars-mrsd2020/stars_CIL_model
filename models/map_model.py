@@ -13,11 +13,11 @@ from pytorch_lightning.loggers import WandbLogger
 from pytorch_lightning.callbacks import ModelCheckpoint
 from PIL import Image, ImageDraw
 
-from models import SegmentationModel, RawController
+from .models import SegmentationModel, RawController
 from utils.heatmap import ToHeatmap
 
 # from .dataset import get_dataset
-import common
+import utils.common as common
 
 # setattr(WandbLogger, 'name', property(lambda self: self._name))
 

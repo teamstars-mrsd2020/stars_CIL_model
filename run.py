@@ -1,10 +1,10 @@
 # set up a carla runner environment
 
-import collections
 import os
 import queue
 import random
 import time
+from collections import deque
 
 import carla
 import cv2
@@ -12,14 +12,14 @@ import ipdb
 import numpy as np
 import torch
 from PIL import Image, ImageDraw
-from collections import deque
-from agents.navigation.global_route_planner import GlobalRoutePlanner
-from agents.navigation.global_route_planner_dao import GlobalRoutePlannerDAO
-
-from map_model import MapModel
-from pid_controller import PIDController
-import common
 from tqdm import tqdm
+
+import utils.common as common
+from models.map_model import MapModel
+from utils.agents.navigation.global_route_planner import GlobalRoutePlanner
+from utils.agents.navigation.global_route_planner_dao import \
+    GlobalRoutePlannerDAO
+from utils.pid_controller import PIDController
 
 PRESET_WEATHERS = {
     1: carla.WeatherParameters.ClearNoon,

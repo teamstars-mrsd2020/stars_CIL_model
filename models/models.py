@@ -2,7 +2,7 @@ import torch
 import torch.nn.functional as F
 
 from torchvision.models.segmentation import deeplabv3_resnet50
-from network import deeplabv3plus_mobilenet
+from .network import deeplabv3plus_mobilenet
 
 
 class RawController(torch.nn.Module):
