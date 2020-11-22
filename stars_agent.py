@@ -21,7 +21,7 @@ PIXELS_PER_WORLD = 5.5
 DEBUG_MAP_VIEW = False
 
 
-class ActorClass:
+class StarsAgent:
     # represents a single actor
     def __init__(
         self,
@@ -46,28 +46,18 @@ class ActorClass:
             spawn_point = np.random.choice(spawn_points)
             self.player = self.world.try_spawn_actor(blueprint, spawn_point)
 
-        print(f"[ActorClass]spawned Player {self.player_id}")
+        print(f"[ActorClass] Spawned Player {self.player_id}")
 
         self.waypoints_queue = deque()
         self._grp = None
 
         self.waypoints_queue.append(self._map.get_waypoint(spawn_point.location))
-        self.reroute(self.spawn_points)
-        _ = self.get_next_waypoint()
+        self.reroute()
         self.cur_target = self.get_next_waypoint()
-        # from behaviour_Agent.py
-        # Add global plan and goal and get_target
-        # Add global planner
-        # Add PID controller(next 4 points to control object )
-        # self.init_planner(spawn_point)
+
         self.init_PID_controller()
         self.init_camera()
         self.init_model()
-
-    # def init_planner(self, start_location):
-    #     self.set_destination(
-    #         start_location, np.random.choice(self.spawn_points), clean=True
-    #     )
 
     def init_PID_controller(self):
         self._turn_controller = PIDController(K_P=1.25, K_I=0.75, K_D=0.3, n=40)
@@ -78,7 +68,7 @@ class ActorClass:
         self.model.cuda()
         self.model.eval()
 
-    def reroute(self, spawn_points):
+    def reroute(self):
         """
         This method implements re-routing for vehicles approaching its destination.
         It finds a new target and computes another path to reach it.
@@ -87,12 +77,12 @@ class ActorClass:
         """
 
         # print("Target almost reached, setting new destination...")
-        random.shuffle(spawn_points)
+        random.shuffle(self.spawn_points)
         new_start = self.waypoints_queue[-1].transform.location
         destination = (
-            spawn_points[0].location
-            if spawn_points[0].location != new_start
-            else spawn_points[1].location
+            self.spawn_points[0].location
+            if self.spawn_points[0].location != new_start
+            else self.spawn_points[1].location
         )
         # print("New destination: " + str(destination))
 
@@ -172,44 +162,21 @@ class ActorClass:
         control.throttle = throttle
         control.brake = float(brake)
 
-        # if DEBUG:
-        #     debug_display(
-        #         tick_data,
-        #         target_cam.squeeze(),
-        #         points.cpu().squeeze(),
-        #         steer,
-        #         throttle,
-        #         brake,
-        #         desired_speed,
-        #         self.step,
-        #     )
-
         return control
 
     def apply_command(self, control):
         self.player.apply_control(control)
 
     def get_map_image(self):
-        # topdown =
-        # topdown = topdown.crop((128, 0, 128 + 256, 256))
-        # topdown = np.array(topdown)
         return self.camera_topdown.get()
 
     def init_camera(self):
-        # self.camera_rgb = Camera(
-        #     self.world, self.player, 256, 144, 90, 1.2, 0.0, 1.3, 0.0, 0.0
-        # )
-        # self.camera_rgb_left = Camera(
-        #     self.world, self.player, 256, 144, 90, 1.2, -0.25, 1.3, 0.0, -45.0
-        # )
-        # self.camera_rgb_right = Camera(
-        #     self.world, self.player, 256, 144, 90, 1.2, 0.25, 1.3, 0.0, 45.0
-        # )
         self.camera_topdown = MapCamera(
             self.world, self.player, 512, 5 * 10.0, 100.0, 5.5, 5
         )
 
     def transform_to_world(self, points):
+
         map_size = 256
         points[..., 0] = (points[..., 0] + 1) / 2 * map_size
         points[..., 1] = (points[..., 1] + 1) / 2 * map_size
@@ -227,20 +194,24 @@ class ActorClass:
         Args:
             target_waypoint (Carla.Waypoint): the next waypoint from the plan
         """
+
         theta = self.player.get_transform().rotation.yaw * np.pi / 180
         loc = self.player.get_location()
         target_loc = target_waypoint.transform.location
         current_position = np.array([loc.x, loc.y])
+
         if np.isnan(theta):
             theta = 0.0
         theta = theta + np.pi / 2
         R = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)],])
+
         target = np.array([target_loc.x, target_loc.y])
         target = R.T.dot(target - current_position)
         target *= PIXELS_PER_WORLD
         target += [128, 256]
         target = np.clip(target, 0, 256)
         target = torch.FloatTensor(target)
+
         return target
 
     def debug_view(self, topdown, target, points):
@@ -262,59 +233,26 @@ class ActorClass:
 
         return _topdown
 
-        # for x, y in _out:
-        #     x = (x + 1) / 2 * 256
-        #     y = (y + 1) / 2 * 256
-
-        #     _draw.ellipse((x - 2, y - 2, x + 2, y + 2), (255, 0, 0))
-
-        # for x, y in _between:
-        #     x = (x + 1) / 2 * 256
-        #     y = (y + 1) / 2 * 256
-
-        # _draw.ellipse((x - 1, y - 1, x + 1, y + 1), (0, 255, 0))
-
     def run_step(self):
         with torch.no_grad():
-            # decouple the tasks below into separate functions so that its easy to batch the execution later
-            # get image
+
             topdown = self.get_map_image()
 
-            # might need to scale the points according to the real-world units
             velocity = self.player.get_velocity()
             speed = np.linalg.norm([velocity.x, velocity.y, velocity.z])
-            DT = 2.5
-            # get target
-            # print("Speed, Topdown shape", speed, topdown.shape)
+
+            DT = 2.5  # speed-time window for rerouting
+
             if self.player.get_location().distance(
                 self.cur_target.transform.location
             ) < (speed * DT):
-                # print("assigning new target")
+                # Assigning new target
                 self.cur_target = self.get_next_waypoint()
                 if len(self.waypoints_queue) < 4:
-                    self.reroute(self.spawn_points)
-            # print(
-            #     "target_wp ",
-            #     self.cur_target.transform.location,
-            #     self.player.get_location(),
-            # )
+                    self.reroute()
+
             topdown = torch.FloatTensor(topdown)
-
-            # self.world.debug.draw_point(
-            #     self.cur_target.transform.location, life_time=10
-            # )
-            # import ipdb
-
-            # ipdb.set_trace()
-
             target = self.transform_target_waypoint(self.cur_target)
-            # print("target_tf ", target)
-            # ------------------
-            # model forward pass - can move this outside for batch inference
-            # out_points = (
-            #     self.model(topdown.cuda()[None], target.unsqueeze(0)).cpu().squeeze()
-            # )
-            ## debug
 
             if DEBUG_MAP_VIEW:
                 out_points, heatmap = self.model(
@@ -325,15 +263,12 @@ class ActorClass:
                     topdown, target, out_points.squeeze().cpu().numpy()
                 )
 
-                # hm = heatmap[0].cpu().squeeze().numpy()
-                # import matplotlib.pyplot as plt
-
-                # _ = plt.figure(1)
                 cv2.imshow(
                     f"debugview_{self.player_id}", np.array(debugimg)[:, :, ::-1]
                 )
                 cv2.waitKey(1)
             else:
+
                 # model forward pass - can move this outside for batch inference
                 # t0 = time.time()
                 out_points = (
@@ -343,20 +278,11 @@ class ActorClass:
                 )
                 # t1 = time.time() - t0
                 # print("Player Time=", self.player_id, t1 * 1000)
-            # plt.imshow(debugimg)
-            # plt.show()
-            # import ipdb
 
-            # ipdb.set_trace()
-            # ------------------
-            # print(out_points)
             points_world = self.transform_to_world(out_points.cpu().numpy())
-            # print(points_world)
 
-            # generate control command from model output
             control = self.get_control_command(points_world, speed)
-            # print(control)
-            # apply command to agent
+
             self.apply_command(control)
 
     def destroy(self):

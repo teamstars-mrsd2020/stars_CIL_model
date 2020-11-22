@@ -3,7 +3,7 @@ import time
 import carla
 import numpy as np
 
-from stars_agent import ActorClass
+from stars_agent import StarsAgent
 
 VEHICLE_NAME = "vehicle.lincoln.mkz2017"
 PRESET_WEATHERS = {
@@ -214,7 +214,7 @@ class CarlaEnv(object):
         ###
         for i in range(num_agents):
             self._players.append(
-                ActorClass(self._client, vehicle_bp, spawn_points, i)
+                StarsAgent(self._client, vehicle_bp, spawn_points, i)
             )  # internally set role_name as well
         # vehicle_bp.set_attribute("role_name", "hero")
 
