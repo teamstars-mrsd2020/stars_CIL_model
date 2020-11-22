@@ -1,4 +1,4 @@
-import os
+import time
 import random
 from collections import deque
 
@@ -235,9 +235,9 @@ class StarsAgent:
 
     def run_step(self):
         with torch.no_grad():
-
+            t0 = time.time()
             topdown = self.get_map_image()
-
+            # print(f"Player {self.player_id}, image time = ", 1000 * (time.time() - t0))
             velocity = self.player.get_velocity()
             speed = np.linalg.norm([velocity.x, velocity.y, velocity.z])
 
@@ -284,6 +284,7 @@ class StarsAgent:
             control = self.get_control_command(points_world, speed)
 
             self.apply_command(control)
+            # print(f"Player {self.player_id}, total time = ", 1000 * (time.time() - t0))
 
     def destroy(self):
         self.player.destroy()

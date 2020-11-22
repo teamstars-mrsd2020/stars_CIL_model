@@ -24,6 +24,7 @@ PRESET_WEATHERS = {
 }
 
 WEATHERS = list(PRESET_WEATHERS.values())
+NUM_AGENTS = 1
 
 
 def set_sync_mode(client, sync):
@@ -197,7 +198,7 @@ class CarlaEnv(object):
             self._clean_up()
             ### make this a multi agent thing(take num_agents as args)
             ### Initialize the ActorClass object inside this and add to a list called self._players
-            num_agents = 10
+            num_agents = NUM_AGENTS
             self._spawn_players(self._map.get_spawn_points(), num_agents)
             # self._spawn_player(np.random.choice(self._map.get_spawn_points()))
             # self._setup_sensors()
@@ -238,7 +239,7 @@ class CarlaEnv(object):
         # if control is not None:
         #     self._player.apply_control(control)
 
-        self._world.tick()
+        # self._world.tick()
         self._tick += 1
         self._pedestrian_pool.tick()
         for player in self._players:
