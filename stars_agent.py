@@ -262,7 +262,7 @@ class StarsAgent:
                 self.world.debug.draw_point(
                     self.player.get_location(),
                     color=carla.Color(0, 0, 255),
-                    life_time=1,
+                    life_time=2,
                 )
 
                 out_points, heatmap = self.model(
@@ -273,6 +273,10 @@ class StarsAgent:
                     topdown, target, out_points.squeeze().cpu().numpy()
                 )
 
+                # bigger_img = cv2.resize(np.array(debugimg)[:, :, ::-1],(800,800))
+                # cv2.imshow(
+                #     f"debugview_{self.player_id}", bigger_img
+                # )
                 cv2.imshow(
                     f"debugview_{self.player_id}", np.array(debugimg)[:, :, ::-1]
                 )

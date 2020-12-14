@@ -3,7 +3,7 @@ from tqdm import tqdm
 from carla_env import CarlaEnv
 
 SYNCMODE = True
-NUM_PLAYERS = 2
+NUM_PLAYERS = 1
 
 if __name__ == "__main__":
     print("Run.py")
